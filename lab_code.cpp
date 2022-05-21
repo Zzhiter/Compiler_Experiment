@@ -2430,7 +2430,7 @@ int main()
             { // in Follow Set  对'else'特殊规定
                 PopStack(ACT[status][cnum].reducelen);
                 int pre_status = GetStackTop();
-                Reduce_Symbol(ACT[status][cnum].reduce);
+                // Reduce_Symbol(ACT[status][cnum].reduce);
                 PushStack(GOTO[pre_status][I[ACT[status][cnum].reduce].head]);
             }
             // 这项为空，出错
@@ -2444,22 +2444,22 @@ int main()
             {
                 int nextstatus = GOTO[status][cnum];
                 PushStack(nextstatus);
-                switch (cnum)
-                {
-                    // 遇到了id
-                case 9:
-                // 向语义栈添加元素id
-                    Insert_Symbol_id(name);
-                    break;
-                    // 遇到了digits
-                case 23:
-                // 向语义栈添加元素常数value
-                    Insert_Symbol_digits(value);
-                    break;
-                // 如果不是id或者value，就向语义栈添加
-                default:
-                    Insert_Symbol(cnum);
-                }
+                // switch (cnum)
+                // {
+                //     // 遇到了id
+                // case 9:
+                // // 向语义栈添加元素id
+                //     Insert_Symbol_id(name);
+                //     break;
+                //     // 遇到了digits
+                // case 23:
+                // // 向语义栈添加元素常数value
+                //     Insert_Symbol_digits(value);
+                //     break;
+                // // 如果不是id或者value，就向语义栈添加
+                // default:
+                //     Insert_Symbol(cnum);
+                // }
                 // 只有移入parse_pos才会++
                 parse_pos++;
             }
@@ -2473,7 +2473,7 @@ int main()
 
                 PopStack(ACT[status][cnum].reducelen);
                 int pre_status = GetStackTop();
-                Reduce_Symbol(ACT[status][cnum].reduce);
+                // Reduce_Symbol(ACT[status][cnum].reduce);
                 PushStack(GOTO[pre_status][I[ACT[status][cnum].reduce].head]);
                 continue;
             }
@@ -2487,19 +2487,19 @@ int main()
 
             // 移入
             int nextstatus = GOTO[status][cnum];
-            switch (cnum)
-            {
-                // 如果是标识符id
-            case 9:
-                Insert_Symbol_id(name);
-                break;
-                // 如果是常数digits
-            case 23:
-                Insert_Symbol_digits(value);
-                break;
-            default:
-                Insert_Symbol(cnum);
-            }
+            // switch (cnum)
+            // {
+            //     // 如果是标识符id
+            // case 9:
+            //     Insert_Symbol_id(name);
+            //     break;
+            //     // 如果是常数digits
+            // case 23:
+            //     Insert_Symbol_digits(value);
+            //     break;
+            // default:
+            //     Insert_Symbol(cnum);
+            // }
 
             PushStack(nextstatus);
             parse_pos++;
@@ -2508,29 +2508,11 @@ int main()
 
     if(choose == 2) return 0;
 
-    cout << "final code generated" << endl;
+    cout << "Code：" << endl;
     for (int i = 0; i < current_line; i++)
     {
-        cout << i << "," << inter_code[i] << endl;
+        cout << i << "：" << inter_code[i] << endl;
     }
 
-
-    cout << endl;
-    cout << "symbol table:" << endl;
-
-    for (int i = 0; i < sym_number; i++)
-    {
-
-        switch (Symtable[i].sym_type)
-        {
-        case 11:
-            cout << "symbol type:int  " << endl;
-            break;
-        case 12:
-            cout << "symbol type:int  " << endl;
-            break;
-        }
-        cout << "symbol name:" << Symtable[i].name << endl;
-    }
     return 0;
 }
