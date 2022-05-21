@@ -65,11 +65,7 @@ class Lexer:
         self.code = ''
         self.code_length = 0
         self.token = []
-        self.read_file()
-        self.pre_process()
-
-    # 读取要处理的代码文件
-    def read_file(self):
+        # self.read_file()
         assert len(self.file_name) > 0, "The input file name error"
 
         with open(self.file_name, 'r') as f:
@@ -77,6 +73,11 @@ class Lexer:
 
         for i in content:
             self.code += str(i)
+        self.pre_process()
+
+    # # 读取要处理的代码文件
+    # def read_file(self):
+        
 
     # 删除注释内容
     def pre_process(self):
@@ -196,7 +197,7 @@ class Lexer:
                 f.write('<' + str(i) + ', ' + str(self.code_type[i]) + \
                         '>\n')
 
-        with open('token_list.txt', 'w') as f:
+        with open('Token_list.txt', 'w') as f:
             for _, token in enumerate(self.token):
                 f.write('<%s, %s>\n' % (token['word'], token['type']))
 

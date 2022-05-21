@@ -5,43 +5,45 @@
 #include <malloc.h>
 using namespace std;
 // 输入的字符序列临时变量
-char Data_in[200];
+char temp_input[200];
 // 输入的字符序列
-char Datain[100];
+char input_code[100];
 
 // 全局指示参数
 int symbol_num = 0;
 
 // 存放读入的数字常数，临时变量
-int Symbol_value[100] = {0};
+int temp_digit[100] = {0};
 // 存放读入的数字常数
-int Value_table[100] = {0};
+int digit_table[100] = {0};
 
 // 临时变量，存放读入的token
-char Symbol_id[100][10] = {'\0'};
+char temp_token[100][10] = {'\0'};
 // 存放读入的token
-char Name_table[100][10];
+char token_table[100][10];
 
 // 最后要输出的三地址代码
 char inter_code[100][20]; 
 // 记录要输出的三地址码的行数
 int current_line = 0;
 
-// 指向Value_table 和 Name_table
+// 指向Value_table 和 token_table
 int parse_pos = 0;
+
+char w_keyword[][8] = {"if", "else", "while", "do", "int", "float"};
 
 int row = 0;
 // 记录分析中在第几行出错
-void ShowError()
+void Show_Error()
 {
     cout << "Error at row " << row << endl;
 }
 
 // 缓存要被分析的代码
-void Get_Code_Context()
+void Get_Code()
 {
     FILE *fp;
-    if ((fp = fopen("srcinput.txt", "wb")) == NULL)
+    if ((fp = fopen("read_buffer.txt", "wb")) == NULL)
     {
         cout << endl
              << "open file Fail,close!";
@@ -49,10 +51,11 @@ void Get_Code_Context()
         exit(1);
     }
     char str[50] = "\0";
-    cout << "please input your codes;each line with an enter\ninput '-1' to exit" << endl;
+    cout << "Please input your codes each line with an enter\nInput '$' to exit" << endl;
+    // 每次读入一行
     while (gets(str))
     {
-        if (strcmp(str, "-1") == 0)
+        if (strcmp(str, "$") == 0)
             break;
         if (strcmp(str, "else") == 0)
         {
@@ -197,18 +200,20 @@ int Sym2Int(char a)
 }
 
 // 把输入从临时变量转存到全局变量
-void Init_Load_data()
+void Init_Input()
 {
-    strcpy(Datain, Data_in);
+    strcpy(input_code, temp_input);
     for (int i = 0; i < 100; i++)
     {
-        Value_table[i] = Symbol_value[i];
-        strcpy(Name_table[i], Symbol_id[i]);
+        digit_table[i] = temp_digit[i];
+        strcpy(token_table[i], temp_token[i]);
+        // cout << token_table[i] << endl;
+        // cout << digit_table[i] << endl;
     }
 }
 
 // 把字符串in添加到全局三地址代码中
-void Add_inter_code(char *in)
+void Add_Intercode(char *in)
 {
     strcpy(inter_code[current_line], in);
     current_line++;
@@ -239,7 +244,8 @@ struct Sym_attr
     int value_pos; // 临时的value存放的位置
     int is_digit;  // 是否为digit
 };
-struct Sym_attr SymStack[100]; // symbol stack
+// 语义栈
+struct Sym_attr SymStack[100]; 
 // 语义栈栈顶指针
 int sym_ptr = 0;
 
@@ -268,13 +274,16 @@ void Pop_Sym_Stack(int num)
     sym_ptr = sym_ptr - num;
 }
 
-// 符号表中的符号项
+// 符号表中的项
 struct Symbol
-{
+{   
+    // 变量的类型，11为int，12为float
     int sym_type;
+    // 变量的名字
     char name[10];
+    // 变量的值
     int value;
-    int has_init; // has been initialized
+    int has_init; // 1为已被初始化，0表示还未被初始化
 };
 
 // 符号表
@@ -331,8 +340,7 @@ void Reduce_Symbol(int num)
     int err = AddSym(temp);
     int L1;
 
-    // 每次reduce规约的时候，先把规约的产生式左部先生成出来
-    // 备用
+    // 每次reduce规约的时候，先把规约的产生式左部先生成出来备用
 
     // D：定义语句
     struct Sym_attr D;
@@ -506,7 +514,7 @@ void Reduce_Symbol(int num)
         S.codenum++;
 
         // 维护全局的三地址代码
-        Add_inter_code(Dcode);
+        Add_Intercode(Dcode);
         // 在符号表中修改S的值为E.value_pos
         err = ChangeSym(SymStack[sym_ptr - 4].name, SymStack[sym_ptr - 2].value_pos);
         if (err)
@@ -530,20 +538,20 @@ void Reduce_Symbol(int num)
         Remove_inter_code(SymStack[sym_ptr - 1].codenum);
         // if C goto current_line + 2，  +2 是因为跳过了当前的if语句
         sprintf(Dcode, "if %s goto %d;", SymStack[sym_ptr - 3].final_code, current_line + 2);
-        Add_inter_code(Dcode);
+        Add_Intercode(Dcode);
         strcpy(S.code[S.codenum], Dcode);
         S.codenum++;
         S.sym_num = 3;
         // 对应if失败的情况，直接跳过if后边的S
         sprintf(Dcode, "goto %d;", current_line + SymStack[sym_ptr - 1].codenum + 1);
-        Add_inter_code(Dcode);
+        Add_Intercode(Dcode);
         strcpy(S.code[S.codenum], Dcode);
         S.codenum++;
 
         // 把上边所有代码加到产生式左部的S
         for (int i = 0; i < SymStack[sym_ptr - 1].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 1].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 1].code[i]);
             strcpy(S.code[S.codenum], SymStack[sym_ptr - 1].code[i]);
             S.codenum++;
         }
@@ -574,7 +582,7 @@ void Reduce_Symbol(int num)
     
         // if C goto S1
         sprintf(Dcode, "if %s goto %d;", SymStack[sym_ptr - 5].final_code, current_line + SymStack[sym_ptr - 1].codenum + 2);
-        Add_inter_code(Dcode);
+        Add_Intercode(Dcode);
         strcpy(S.code[S.codenum], Dcode);
         S.codenum++;
         S.sym_num = 3;
@@ -582,20 +590,20 @@ void Reduce_Symbol(int num)
         // 再把S2代码添加进来
         for (int i = 0; i < SymStack[sym_ptr - 1].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 1].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 1].code[i]);
             strcpy(S.code[S.codenum], SymStack[sym_ptr - 1].code[i]);
             S.codenum++;
         }
         // goto current_line+S1.codenum+1
         sprintf(Dcode, "goto %d;", current_line + SymStack[sym_ptr - 3].codenum + 1);
-        Add_inter_code(Dcode);
+        Add_Intercode(Dcode);
         strcpy(S.code[S.codenum], Dcode);
         S.codenum++;
 
         // 再把S1代码添加进来
         for (int i = 0; i < SymStack[sym_ptr - 3].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 3].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 3].code[i]);
             strcpy(S.code[S.codenum], SymStack[sym_ptr - 3].code[i]);
             S.codenum++;
         }
@@ -634,13 +642,13 @@ void Reduce_Symbol(int num)
 
         for (int i = 0; i < SymStack[sym_ptr - 3].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 3].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 3].code[i]);
             strcpy(C.code[C.codenum], SymStack[sym_ptr - 3].code[i]);
             C.codenum++;
         }
         for (int i = 0; i < SymStack[sym_ptr - 1].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 1].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 1].code[i]);
             strcpy(C.code[C.codenum], SymStack[sym_ptr - 1].code[i]);
             C.codenum++;
         }
@@ -715,13 +723,13 @@ void Reduce_Symbol(int num)
         C.codenum = 0;
         for (int i = 0; i < SymStack[sym_ptr - 3].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 3].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 3].code[i]);
             strcpy(C.code[C.codenum], SymStack[sym_ptr - 3].code[i]);
             C.codenum++;
         }
         for (int i = 0; i < SymStack[sym_ptr - 1].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 1].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 1].code[i]);
             strcpy(C.code[C.codenum], SymStack[sym_ptr - 1].code[i]);
             C.codenum++;
         }
@@ -789,13 +797,13 @@ void Reduce_Symbol(int num)
         C.codenum = 0;
         for (int i = 0; i < SymStack[sym_ptr - 3].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 3].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 3].code[i]);
             strcpy(C.code[C.codenum], SymStack[sym_ptr - 3].code[i]);
             C.codenum++;
         }
         for (int i = 0; i < SymStack[sym_ptr - 1].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 1].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 1].code[i]);
             strcpy(C.code[C.codenum], SymStack[sym_ptr - 1].code[i]);
             C.codenum++;
         }
@@ -857,7 +865,7 @@ void Reduce_Symbol(int num)
         Push_Sym_Stack(&C);
         break;
 
-    // E E+T
+    //  
     case 14:
         // 先删除E和T的代码，在全局
         Remove_inter_code(SymStack[sym_ptr - 1].codenum);
@@ -867,7 +875,7 @@ void Reduce_Symbol(int num)
         // 为左部的E添加右部的E的代码
         for (int i = 0; i < SymStack[sym_ptr - 3].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 3].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 3].code[i]);
             strcpy(E.code[E.codenum], SymStack[sym_ptr - 3].code[i]);
             E.codenum++;
         }
@@ -875,7 +883,7 @@ void Reduce_Symbol(int num)
         // 为E添加T的代码
         for (int i = 0; i < SymStack[sym_ptr - 1].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 1].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 1].code[i]);
             strcpy(E.code[E.codenum], SymStack[sym_ptr - 1].code[i]);
             E.codenum++;
         }
@@ -934,7 +942,7 @@ void Reduce_Symbol(int num)
         E.value_pos = used_temp_num;
         used_temp_num++;
 
-        Add_inter_code(Dcode);
+        Add_Intercode(Dcode);
         strcpy(E.code[E.codenum], Dcode);
         E.codenum++;
         E.sym_type = 6;
@@ -949,14 +957,14 @@ void Reduce_Symbol(int num)
     
         for (int i = 0; i < SymStack[sym_ptr - 3].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 3].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 3].code[i]);
             strcpy(E.code[E.codenum], SymStack[sym_ptr - 3].code[i]);
             E.codenum++;
         }
         
         for (int i = 0; i < SymStack[sym_ptr - 1].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 1].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 1].code[i]);
             strcpy(E.code[E.codenum], SymStack[sym_ptr - 1].code[i]);
             E.codenum++;
         }
@@ -1010,7 +1018,7 @@ void Reduce_Symbol(int num)
         }
         E.value_pos = used_temp_num;
         used_temp_num++;
-        Add_inter_code(Dcode);
+        Add_Intercode(Dcode);
         strcpy(E.code[E.codenum], Dcode);
         E.codenum++;
         E.sym_type = 6;
@@ -1059,13 +1067,13 @@ void Reduce_Symbol(int num)
         T.codenum = 0;
         for (int i = 0; i < SymStack[sym_ptr - 3].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 3].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 3].code[i]);
             strcpy(T.code[T.codenum], SymStack[sym_ptr - 3].code[i]);
             T.codenum++;
         }
         for (int i = 0; i < SymStack[sym_ptr - 1].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 1].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 1].code[i]);
             strcpy(T.code[T.codenum], SymStack[sym_ptr - 1].code[i]);
             T.codenum++;
         }
@@ -1116,7 +1124,7 @@ void Reduce_Symbol(int num)
                 sprintf(Dcode, "Reg%d=%d*%d", used_temp_num, SymStack[sym_ptr - 3].value, SymStack[sym_ptr - 1].value);
             }
         }
-        Add_inter_code(Dcode);
+        Add_Intercode(Dcode);
         strcpy(T.code[T.codenum], Dcode);
         T.codenum++;
         Pop_Sym_Stack(3);
@@ -1129,13 +1137,13 @@ void Reduce_Symbol(int num)
         T.codenum = 0;
         for (int i = 0; i < SymStack[sym_ptr - 3].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 3].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 3].code[i]);
             strcpy(T.code[T.codenum], SymStack[sym_ptr - 3].code[i]);
             T.codenum++;
         }
         for (int i = 0; i < SymStack[sym_ptr - 1].codenum; i++)
         {
-            Add_inter_code(SymStack[sym_ptr - 1].code[i]);
+            Add_Intercode(SymStack[sym_ptr - 1].code[i]);
             strcpy(T.code[T.codenum], SymStack[sym_ptr - 1].code[i]);
             T.codenum++;
         }
@@ -1186,7 +1194,7 @@ void Reduce_Symbol(int num)
                 sprintf(Dcode, "Reg%d=%d/%d", used_temp_num, SymStack[sym_ptr - 3].value, SymStack[sym_ptr - 1].value);
             }
         }
-        Add_inter_code(Dcode);
+        Add_Intercode(Dcode);
         strcpy(T.code[T.codenum], Dcode);
         T.codenum++;
         Pop_Sym_Stack(3);
@@ -1212,6 +1220,7 @@ void Reduce_Symbol(int num)
         break;
     // F id
     case 21:
+        // 直接复制给F
         F.is_digit = 0;
         F.sym_type = 9;
         F.value = SymStack[sym_ptr - 1].value;
@@ -1221,9 +1230,9 @@ void Reduce_Symbol(int num)
         break;
     // F digits
     case 22:
+        // 直接复制给F
         F.is_digit = 1;
         F.sym_type = 23;
-        F.value = SymStack[sym_ptr - 1].value;
         F.value = SymStack[sym_ptr - 1].value;
         Pop_Sym_Stack(1);
         Push_Sym_Stack(&F);
@@ -1260,21 +1269,21 @@ void Insert_Symbol(int n)
     Push_Sym_Stack(&A);
 }
 
-//项的右部
-char str[10] = "P";
+// 产生式的右部
+char start[10] = "P";
 char str1[10] = "DS";
 char str2[10] = "La;D";
 char str3[10] = "S";
 char str4[10] = "b";
 char str5[10] = "c";
 char str6[10] = "a=E;";
-char str7[10] = "e(C)S";
-char str8[10] = "e(C)SfS";
+char str7[10] = "e(C)S"; //e 是 if
+char str8[10] = "e(C)SfS"; // f 是 else
 char str9[10] = "g(C)S";
 char str10[10] = "SS";
 char str11[10] = "E>E";
 char str12[10] = "E<E";
-char str13[10] = "EhE";
+char str13[10] = "EhE"; // h是==
 char str14[10] = "E+T";
 char str15[10] = "E-T";
 char str16[10] = "T";
@@ -1282,8 +1291,8 @@ char str17[10] = "F";
 char str18[10] = "T*F";
 char str19[10] = "T/F";
 char str20[10] = "(E)";
-char str21[10] = "a";
-char str22[10] = "d";
+char str21[10] = "a";   // a是标识符id
+char str22[10] = "d";   // d是digits 数字常数
 char str23[10] = "La;";
 
 int First[9][20];  // First Set 18 is '$'    19 is 'null'
@@ -1309,21 +1318,25 @@ struct ISet
     int SetItem[24][10];
     int validItem[24];
     int conf; //存在冲突
-    // int reducehead; // if exist item which can be reduced,record its head num
 };
 
 struct ISet Status[200]; //所有状态
 int status_num = 0;      //状态数目
 
 struct Action
-{
-    int status_code; // 0 for error    1 for normal    2 for acc
+{   
+    // 出错则为0， 正常则为1， 接受acc则为2
+    int status_code; 
     int movein;      //为1表示移入
     int movenum;     //表示移入的状态
     // 表示需要用0-24中哪个产生式进行规约
     int reduce;    //为-1表示不规约
     int reducelen; //回退长度
 };
+// 最多200个状态，28个符号
+int GOTO[200][28]; // GOTO表，描述状态转移
+// Action表
+struct Action ACT[200][28];
 
 // 状态栈，包含栈本身和栈顶指针
 struct StatusStack
@@ -1355,10 +1368,7 @@ void PushStack(int n)
     SStack.topptr = SStack.topptr + 1;
 }
 
-// 最多200个状态，28个符号
-int GOTO[200][28]; // GOTO表，描述状态转移
-// Action表
-struct Action ACT[200][28];
+
 
 int SetEqual(struct ISet *in1, struct ISet *in2)
 {
@@ -1469,7 +1479,7 @@ int ItemValid(struct ISet *in, int j)
     return 1;
 }
 
-void Init()
+void Init_LR()
 { //初始化
     memset(GOTO, -1, sizeof(GOTO));
     memset(First, 0, sizeof(First));
@@ -1498,8 +1508,8 @@ void Init()
     // 添加产生式
     // P
     I[0].head = 0;
-    strcpy(I[0].body, str);
-    I[0].len = strlen(str);
+    strcpy(I[0].body, start);
+    I[0].len = strlen(start);
 
     // str1为DS
     I[1].head = 1;
@@ -1791,8 +1801,18 @@ void GetFollow()
 
 int main()
 {
+    cout << "Please input 1, 2 or 3\n1 for Lexical analysis\n2 for Syntax analysis\n3 for Semantic Analysis\n ";
+    int choose;
+    cin >> choose;
+
+    if(choose != 1 && choose != 2 && choose != 3)
+    {
+        cout << "input error" <<endl;
+        return 0;
+    }
+     
     int after_else = 0;
-    Get_Code_Context();
+    Get_Code();
 
     char sentance_input[200];
     char word_token[20];
@@ -1802,11 +1822,9 @@ int main()
     int w_state = 0;
     int x_num = 0, id_x = 0;
 
-    char w_keyword[][8] = {"if", "else", "while", "do", "int", "float"};
-
     FILE *fp_soure;
 
-    fp_soure = fopen("srcinput.txt", "r+");
+    fp_soure = fopen("read_buffer.txt", "r+");
 
     if (fp_soure != NULL)
     {
@@ -1852,7 +1870,7 @@ int main()
                             w_next--;
                         if (isalpha(next_c))
                         {
-                            ShowError();
+                            Show_Error();
                         }
 
                         x_num = 0;
@@ -1865,10 +1883,10 @@ int main()
                         word_token[w_forward + 1] = '\0';
                         cout << "token is [ const digits ," << word_token << "]" << endl;
 
-                        Data_in[symbol_num] = 'd';
+                        temp_input[symbol_num] = 'd';
                         // 转化成数字
                         int num = atoi(word_token);
-                        Symbol_value[symbol_num] = num;
+                        temp_digit[symbol_num] = num;
                         symbol_num++;
 
                         w_state = 0;
@@ -1909,29 +1927,29 @@ int main()
                                 switch (i)
                                 {
                                 case 0:
-                                    Data_in[symbol_num] = 'e';
+                                    temp_input[symbol_num] = 'e';
                                     symbol_num++;
                                     break;
                                 case 1:
-                                    Data_in[symbol_num] = 'f';
+                                    temp_input[symbol_num] = 'f';
                                     symbol_num++;
                                     after_else = 1;
                                     break;
                                 case 2:
 
-                                    Data_in[symbol_num] = 'g';
+                                    temp_input[symbol_num] = 'g';
                                     symbol_num++;
                                     break;
                                 case 3:
                                     break;
                                 case 4:
 
-                                    Data_in[symbol_num] = 'b';
+                                    temp_input[symbol_num] = 'b';
                                     symbol_num++;
                                     break;
                                 case 5:
 
-                                    Data_in[symbol_num] = 'c';
+                                    temp_input[symbol_num] = 'c';
                                     symbol_num++;
                                     break;
                                 }
@@ -1942,8 +1960,8 @@ int main()
                         if (id_x == 0)
                         {
                             cout << "token is [ id ," << word_token << "]" << endl;
-                            strcpy(Symbol_id[symbol_num], word_token);
-                            Data_in[symbol_num] = 'a';
+                            strcpy(temp_token[symbol_num], word_token);
+                            temp_input[symbol_num] = 'a';
                             symbol_num++;
                         }
 
@@ -2018,7 +2036,7 @@ int main()
 
                     default:
                         w_state = 4;
-                        Data_in[symbol_num] = '<';
+                        temp_input[symbol_num] = '<';
                         symbol_num++;
                         break;
                     }
@@ -2068,7 +2086,7 @@ int main()
                     }
                     word_token[w_forward] = '\0';
                     cout << "token is [ op ," << word_token << "]" << endl;
-                    Data_in[symbol_num] = '=';
+                    temp_input[symbol_num] = '=';
                     symbol_num++;
                     w_state = 0;
                     w_next = w_forward;
@@ -2084,34 +2102,34 @@ int main()
                     switch (w_state)
                     {
                     case 9:
-                        Data_in[symbol_num] = '+';
+                        temp_input[symbol_num] = '+';
                         symbol_num++;
                         break;
                     case 10:
-                        Data_in[symbol_num] = '-';
+                        temp_input[symbol_num] = '-';
                         symbol_num++;
                         break;
                     case 11:
-                        Data_in[symbol_num] = '*';
+                        temp_input[symbol_num] = '*';
                         symbol_num++;
                         break;
                     case 12:
-                        Data_in[symbol_num] = '/';
+                        temp_input[symbol_num] = '/';
                         symbol_num++;
                         break;
                     case 13:
-                        Data_in[symbol_num] = '(';
+                        temp_input[symbol_num] = '(';
                         symbol_num++;
                         break;
                     case 14:
-                        Data_in[symbol_num] = ')';
+                        temp_input[symbol_num] = ')';
                         symbol_num++;
                         break;
                     case 15:
                         ("after_else:%d\n", after_else);
                         if (after_else == 0)
                         {
-                            Data_in[symbol_num] = ';';
+                            temp_input[symbol_num] = ';';
                             symbol_num++;
                         }
 
@@ -2145,7 +2163,7 @@ int main()
                         next_c = sentance_input[w_next];
                     }
                     else
-                        ShowError();
+                        Show_Error();
                     while (w_forward <= w_next)
                     {
                         word_token[x_num] = sentance_input[w_forward];
@@ -2167,7 +2185,7 @@ int main()
                         break;
                     default:
                         w_state = 8;
-                        Data_in[symbol_num] = '>';
+                        temp_input[symbol_num] = '>';
                         symbol_num++;
                         break;
                     }
@@ -2216,18 +2234,18 @@ int main()
         cout << "open file error!" << endl;
     }
 
-    Data_in[symbol_num] = '$';
+    temp_input[symbol_num] = '$';
     symbol_num++;
-    Data_in[symbol_num] = '\0';
+    temp_input[symbol_num] = '\0';
 
-    cout << "lexical analysis has completed,press any key to start grammar analysis" << endl;
-    cout << "grammar analysis can only use '=' '>' '<' '==' '+' '-' '*' '/' '(' ')' 'if' 'else' 'while'" << endl;
+    if(choose == 1) return 0;
+    cout << "lexical analysis has completed, press any key to start grammar analysis" << endl;
+    // cout << "grammar analysis can only use '=' '>' '<' '==' '+' '-' '*' '/' '(' ')' 'if' 'else' 'while'" << endl;
     getchar();
 
     // for grammar analysis
-    Init();
-    Init_Load_data();
-    // ("%s\n", Datain);
+    Init_LR();
+    Init_Input();
     GetFirst();
     GetFollow();
 
@@ -2376,14 +2394,14 @@ int main()
     // 在规约的过程中，使用语义栈进行中间代码生成
     while (1)
     {
-        char c = Datain[parse_pos];
+        char c = input_code[parse_pos];
         // 把当前字符映射成数字
         int cnum = Sym2Int(c);
         // 获取常数
-        int value = Value_table[parse_pos];
+        int value = digit_table[parse_pos];
         char name[10];
         // 获取标识符
-        strcpy(name, Name_table[parse_pos]);
+        strcpy(name, token_table[parse_pos]);
         // 循环退出的条件
         if (c == '$')
         {
@@ -2396,7 +2414,7 @@ int main()
                 break;
             }
         }
-
+        
         // 获取栈顶状态
         int status = GetStackTop();
         // 如果当前状态，存在移入规约冲突
@@ -2487,6 +2505,8 @@ int main()
             parse_pos++;
         }
     }
+
+    if(choose == 2) return 0;
 
     cout << "final code generated" << endl;
     for (int i = 0; i < current_line; i++)
