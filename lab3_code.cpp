@@ -865,7 +865,7 @@ void Reduce_Symbol(int num)
         Push_Sym_Stack(&C);
         break;
 
-    //  E E+T
+    //  
     case 14:
         // 先删除E和T的代码，在全局
         Remove_inter_code(SymStack[sym_ptr - 1].codenum);
@@ -1800,7 +1800,17 @@ void GetFollow()
 }
 
 int main()
-{      
+{
+    cout << "Please input 1, 2 or 3\n1 for Lexical analysis\n2 for Syntax analysis\n3 for Semantic Analysis\n ";
+    int choose;
+    cin >> choose;
+
+    if(choose != 1 && choose != 2 && choose != 3)
+    {
+        cout << "input error" <<endl;
+        return 0;
+    }
+     
     int after_else = 0;
     Get_Code();
 
@@ -1819,7 +1829,7 @@ int main()
     if (fp_soure != NULL)
     {
         memset(sentance_input, 0x00, sizeof(char) * 200);
-        // cout << "Token generated:" << endl;
+        cout << "Token generated:" << endl;
 
         // reading all lines
         while (EOF != fscanf(fp_soure, "%[^\n]\n", sentance_input))
@@ -1871,7 +1881,7 @@ int main()
                             x_num++;
                         }
                         word_token[w_forward + 1] = '\0';
-                        // cout << "token is [ const digits ," << word_token << "]" << endl;
+                        cout << "token is [ const digits ," << word_token << "]" << endl;
 
                         temp_input[symbol_num] = 'd';
                         // 转化成数字
@@ -1911,7 +1921,7 @@ int main()
                             // ("word_token:%s  w_keyword[i]:%s\n", word_token, w_keyword[i]);
                             if (strcmp(word_token, w_keyword[i]) == 0)
                             {
-                                // cout << "token is [ keyword ," << word_token << "]" << endl;
+                                cout << "token is [ keyword ," << word_token << "]" << endl;
                                 // 表示是关键字
                                 id_x = 1; // keyword not in table
                                 switch (i)
@@ -1949,7 +1959,7 @@ int main()
                         // 不是关键字，那就是标识符
                         if (id_x == 0)
                         {
-                            // cout << "token is [ id ," << word_token << "]" << endl;
+                            cout << "token is [ id ," << word_token << "]" << endl;
                             strcpy(temp_token[symbol_num], word_token);
                             temp_input[symbol_num] = 'a';
                             symbol_num++;
@@ -2041,7 +2051,7 @@ int main()
                         x_num++;
                     }
                     word_token[w_forward + 1] = '\0';
-                    // cout << "token is [ op ," << word_token << "]" << endl;
+                    cout << "token is [ op ," << word_token << "]" << endl;
                     w_state = 0;
                     w_next = w_forward;
                     break;
@@ -2057,7 +2067,7 @@ int main()
                         x_num++;
                     }
                     word_token[w_forward] = '\0';
-                    // cout << "token is [ op ," << word_token << "]" << endl;
+                    cout << "token is [ op ," << word_token << "]" << endl;
                     w_state = 0;
                     w_next = w_forward;
                     break;
@@ -2075,7 +2085,7 @@ int main()
                         x_num++;
                     }
                     word_token[w_forward] = '\0';
-                    // cout << "token is [ op ," << word_token << "]" << endl;
+                    cout << "token is [ op ," << word_token << "]" << endl;
                     temp_input[symbol_num] = '=';
                     symbol_num++;
                     w_state = 0;
@@ -2135,7 +2145,7 @@ int main()
                     word_token[w_forward] = '\0';
                     if (!((strcmp(word_token, ";") == 0) && (after_else == 1)))
                     {
-                        // cout << "token is [ op ," << word_token << "]" << endl;
+                        cout << "token is [ op ," << word_token << "]" << endl;
                     }
                     if (after_else == 1)
                     {
@@ -2161,7 +2171,7 @@ int main()
                         x_num++;
                     }
                     word_token[w_forward] = '\0';
-                    // cout << "token is [ op ," << word_token << "]" << endl;
+                    cout << "token is [ op ," << word_token << "]" << endl;
                     w_state = 0;
                     w_next = w_forward;
                     break;
@@ -2190,7 +2200,7 @@ int main()
                         x_num++;
                     }
                     word_token[w_forward] = '\0';
-                    // cout << "token is [ op ," << word_token << "]" << endl;
+                    cout << "token is [ op ," << word_token << "]" << endl;
                     w_state = 0;
                     w_next = w_forward;
                     break;
@@ -2204,7 +2214,7 @@ int main()
                         x_num++;
                     }
                     word_token[w_forward] = '\0';
-                    // cout << "token is [ op ," << word_token << "]" << endl;
+                    cout << "token is [ op ," << word_token << "]" << endl;
                     w_state = 0;
                     w_next = w_forward;
                     break;
@@ -2228,6 +2238,7 @@ int main()
     symbol_num++;
     temp_input[symbol_num] = '\0';
 
+    if(choose == 1) return 0;
     cout << "lexical analysis has completed, press any key to start grammar analysis" << endl;
     // cout << "grammar analysis can only use '=' '>' '<' '==' '+' '-' '*' '/' '(' ')' 'if' 'else' 'while'" << endl;
     getchar();
@@ -2419,7 +2430,7 @@ int main()
             { // in Follow Set  对'else'特殊规定
                 PopStack(ACT[status][cnum].reducelen);
                 int pre_status = GetStackTop();
-                Reduce_Symbol(ACT[status][cnum].reduce);
+                // Reduce_Symbol(ACT[status][cnum].reduce);
                 PushStack(GOTO[pre_status][I[ACT[status][cnum].reduce].head]);
             }
             // 这项为空，出错
@@ -2433,22 +2444,22 @@ int main()
             {
                 int nextstatus = GOTO[status][cnum];
                 PushStack(nextstatus);
-                switch (cnum)
-                {
-                    // 遇到了id
-                case 9:
-                // 向语义栈添加元素id
-                    Insert_Symbol_id(name);
-                    break;
-                    // 遇到了digits
-                case 23:
-                // 向语义栈添加元素常数value
-                    Insert_Symbol_digits(value);
-                    break;
-                // 如果不是id或者value，就向语义栈添加
-                default:
-                    Insert_Symbol(cnum);
-                }
+                // switch (cnum)
+                // {
+                //     // 遇到了id
+                // case 9:
+                // // 向语义栈添加元素id
+                //     Insert_Symbol_id(name);
+                //     break;
+                //     // 遇到了digits
+                // case 23:
+                // // 向语义栈添加元素常数value
+                //     Insert_Symbol_digits(value);
+                //     break;
+                // // 如果不是id或者value，就向语义栈添加
+                // default:
+                //     Insert_Symbol(cnum);
+                // }
                 // 只有移入parse_pos才会++
                 parse_pos++;
             }
@@ -2462,7 +2473,7 @@ int main()
 
                 PopStack(ACT[status][cnum].reducelen);
                 int pre_status = GetStackTop();
-                Reduce_Symbol(ACT[status][cnum].reduce);
+                // Reduce_Symbol(ACT[status][cnum].reduce);
                 PushStack(GOTO[pre_status][I[ACT[status][cnum].reduce].head]);
                 continue;
             }
@@ -2476,30 +2487,31 @@ int main()
 
             // 移入
             int nextstatus = GOTO[status][cnum];
-            switch (cnum)
-            {
-                // 如果是标识符id
-            case 9:
-                Insert_Symbol_id(name);
-                break;
-                // 如果是常数digits
-            case 23:
-                Insert_Symbol_digits(value);
-                break;
-            default:
-                Insert_Symbol(cnum);
-            }
+            // switch (cnum)
+            // {
+            //     // 如果是标识符id
+            // case 9:
+            //     Insert_Symbol_id(name);
+            //     break;
+            //     // 如果是常数digits
+            // case 23:
+            //     Insert_Symbol_digits(value);
+            //     break;
+            // default:
+            //     Insert_Symbol(cnum);
+            // }
 
             PushStack(nextstatus);
             parse_pos++;
         }
     }
 
+    if(choose == 2) return 0;
 
-    cout << "Code:" << endl;
+    cout << "Code：" << endl;
     for (int i = 0; i < current_line; i++)
     {
-        cout << i << ":" << inter_code[i] << endl;
+        cout << i << "：" << inter_code[i] << endl;
     }
 
     return 0;
